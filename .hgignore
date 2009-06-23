@@ -1,0 +1,14 @@
+# use glob syntax.
+syntax: glob
+
+*.elc
+*.pyc
+*.swp
+*.mo
+*~
+*.orig
+*.zip
+
+syntax: regexp
+(.*/)?\#[^/]*\#$
+(.*/)?\.\#[^/]*$
