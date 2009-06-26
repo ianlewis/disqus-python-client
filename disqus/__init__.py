@@ -69,17 +69,18 @@ class DisqusService(object):
                 user is determined by the API key. See "Object Formats" header
                 below for details on forum objects. 
         """
-        resp = self._http_request("get_forum_list", key_required=True)
+        resp = self._http_request("get_forum_list")
         return [decode_forum(f) for f in resp["message"]]
 
-    def get_forum_api_key(self):
+    def get_forum_api_key(self, forum_id):
         """
         Key: User Key
         Arguments: "forum_id", the unique id of the forum.
 
         Result: A string which is the Forum Key for the given forum. 
         """
-        pass
+        resp = self._http_request("get_forum_api_key", { "forum_id":forum_id })
+        return resp["message"]
 
     def get_thread_list(self):
         """
@@ -177,7 +178,7 @@ class DisqusService(object):
         """
         pass
 
-    def _http_request(self, method_name, data={}, key_required=False):
+    def _http_request(self, method_name, data={}, key_required=True):
         if key_required:
             if not getattr(self, "api_key"):
                 raise Exception("Please login")
