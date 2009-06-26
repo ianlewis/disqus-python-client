@@ -30,7 +30,6 @@ REQUEST_METHODS = {
 }
 
 class DisqusService(object):
-    forum_key_cache = {}
 
     def login(self, api_key):
         self.user_api_key = api_key
@@ -75,22 +74,20 @@ class DisqusService(object):
         return [self._decode_forum(f) for f in resp]
 
     def get_user_api_key(self):
-        if not getattr(self, "user_api_key"):
+        if getattr(self, "user_api_key",None) is None:
             raise Exception("Please login")
         return self.user_api_key
 
-    def get_forum_api_key(self, forum_id):
+    def get_forum_api_key(self, forum):
         """
         Key: User Key
         Arguments: "forum_id", the unique id of the forum.
 
         Result: A string which is the Forum Key for the given forum. 
         """
-        if not self.forum_key_cache.get(str(forum_id)):
-            self.forum_key_cache[str(forum_id)] = self._http_request("get_forum_api_key", { "forum_id":forum_id })
-        return self.forum_key_cache[str(forum_id)]
+        return self._http_request("get_forum_api_key", { "forum_id":forum.id })
 
-    def get_thread_list(self, forum_id):
+    def get_thread_list(self, forum):
         """
         Key: Forum Key
         Arguments: None.
@@ -100,11 +97,11 @@ class DisqusService(object):
                 objects.
         """
         resp = self._http_request("get_thread_list", {
-            "forum_api_key": self.get_forum_api_key(forum_id),
+            "forum_api_key": forum.api_key,
         })
-        return [self._decode_thread(t) for t in resp]
+        return [self._decode_thread(forum, t) for t in resp]
 
-    def get_num_posts(self, forum_id, thread_ids):
+    def get_num_posts(self, forum, thread_ids):
         """
         Key: Forum Key
         Arguments: "thread_ids": a comma-separated list of thread IDs belonging
@@ -120,7 +117,7 @@ class DisqusService(object):
         """
         pass
 
-    def get_thread_by_url(self, forum_id, url):
+    def get_thread_by_url(self, forum, url):
         """
         Key: Forum Key
         Arguments: "url", the URL to check for an associated thread.
@@ -136,7 +133,7 @@ class DisqusService(object):
         """
         pass
 
-    def get_thread_posts(self, forum_id, thread_id):
+    def get_thread_posts(self, forum, thread_id):
         """
         Key: Forum Key
         Arguments: "thread_id": the ID of a thread belonging to the given 
@@ -147,7 +144,7 @@ class DisqusService(object):
         """
         pass
 
-    def thread_by_identifier(self, forum_id, title, identifier):
+    def thread_by_identifier(self, forum, title, identifier):
         """
         Key: Forum Key
         Method: POST
@@ -172,7 +169,7 @@ class DisqusService(object):
         """
         pass
 
-    def update_thread(self, forum_id, **kwargs):
+    def update_thread(self, forum, **kwargs):
         """
         Key: Forum Key
         Method: POST
@@ -220,12 +217,12 @@ class DisqusService(object):
             name=dct.get("name"),
         )
 
-    def _decode_thread(self, dct):
+    def _decode_thread(self, forum, dct):
         if _debug:
             print "decode_thread: %r" % dct
         return Thread(
             id=dct.get("id"),
-            forum=dct.get("forum"),
+            forum=forum,
             slug=dct.get("slug"),
             title=dct.get("title"),
             created_at=parseDateClass(dct.get("created_at")),
@@ -286,9 +283,16 @@ class Forum(object):
         self.id = id
         self.shortname = shortname
         self.name = name
+        self._api_key = None
+
+    def _get_api_key(self):
+        if self._api_key is None:
+            self._api_key = self.service.get_forum_api_key(self)
+        return self._api_key
+    api_key = property(_get_api_key)
 
     def get_thread_list(self):
-        return self.service.get_thread_list(self.id)
+        return self.service.get_thread_list(self)
 
 class Thread(object):
     """
