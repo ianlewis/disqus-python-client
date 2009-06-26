@@ -12,8 +12,6 @@ import urllib
 
 from tlslite.utils.dateFuncs import parseDateClass
 
-_debug = False
-
 HOST = "disqus.com"
 BASE_URL = "/api/%s/"
 
@@ -30,6 +28,7 @@ REQUEST_METHODS = {
 }
 
 class DisqusService(object):
+    _debug = False
 
     def login(self, api_key):
         self.user_api_key = api_key
@@ -101,7 +100,7 @@ class DisqusService(object):
         })
         return [self._decode_thread(forum, t) for t in resp]
 
-    def get_num_posts(self, forum, thread_ids):
+    def get_num_posts(self, forum, threads):
         """
         Key: Forum Key
         Arguments: "thread_ids": a comma-separated list of thread IDs belonging
@@ -115,7 +114,11 @@ class DisqusService(object):
                 some forums require moderator approval, some messages are
                 flagged as spam, etc. 
         """
-        pass
+        resp = self._http_request("get_num_posts", {
+            "forum_api_key": forum.api_key,
+            "thread_ids": ",".join([thread.id for thread in threads]),
+        })
+        return resp
 
     def get_thread_by_url(self, forum, url):
         """
@@ -186,6 +189,9 @@ class DisqusService(object):
         """
         pass
 
+    def set_debug(self, debug):
+        self._debug = debug
+
     def _http_request(self, method_name, data={}, user_key_required=True):
         if user_key_required:
             data["user_api_key"] = self.get_user_api_key()
@@ -193,7 +199,8 @@ class DisqusService(object):
         method = REQUEST_METHODS[method_name]
 
         url = (BASE_URL +"?%s") % (method_name, urllib.urlencode(data))
-        
+        if self._debug:
+            print url
         con = httplib.HTTPConnection(HOST)
         con.request(method, url)
         
@@ -208,7 +215,7 @@ class DisqusService(object):
             raise Exception("%s: %s" % (dct.get("code"), dct.get("message")))
 
     def _decode_forum(self, dct):
-        if _debug:
+        if self._debug:
             print "decode_forum: %r" % dct
         return Forum(
             service=self,
@@ -218,9 +225,10 @@ class DisqusService(object):
         )
 
     def _decode_thread(self, forum, dct):
-        if _debug:
+        if self._debug:
             print "decode_thread: %r" % dct
         return Thread(
+            service=self,
             id=dct.get("id"),
             forum=forum,
             slug=dct.get("slug"),
@@ -284,6 +292,7 @@ class Forum(object):
         self.shortname = shortname
         self.name = name
         self._api_key = None
+        self._threads = None
 
     def _get_api_key(self):
         if self._api_key is None:
@@ -292,7 +301,9 @@ class Forum(object):
     api_key = property(_get_api_key)
 
     def get_thread_list(self):
-        return self.service.get_thread_list(self)
+        if self._threads is None:
+            self._threads = self.service.get_thread_list(self)
+        return self._threads
 
 class Thread(object):
     """
@@ -310,6 +321,7 @@ class Thread(object):
                 thread_by_identifier above (if available) 
     """
     def __init__(self,
+                 service,
                  id,
                  forum,
                  slug,
@@ -318,6 +330,7 @@ class Thread(object):
                  allow_comments,
                  url,
                  identifier):
+        self.service = service
         self.id = id
         self.forum = forum
         self.slug = slug
@@ -326,6 +339,28 @@ class Thread(object):
         self.allow_comments = allow_comments
         self.url = url
         self.identifier = identifier
+        
+        self._num_visible_posts = None
+        self._num_total_posts = None
+    
+    def _get_num_posts(self):
+        data = self.service.get_num_posts(self.forum, [self])
+        self._num_visible_posts = data[self.id][0]
+        self._num_total_posts = data[self.id][1]
+
+    def _get_visible_posts(self):
+        if self._num_visible_posts is None:
+            self._get_num_posts()
+        return self._num_visible_posts
+
+    visible_posts = property(_get_visible_posts)
+
+    def _get_total_posts(self):
+        if self._num_total_posts is None:
+            self._get_num_posts()
+        return self._num_total_posts
+
+    total_posts = property(_get_total_posts)
 
 class Post(object):
     def __init__(self,
