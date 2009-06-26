@@ -6,8 +6,13 @@ import os
 def parseDateClass(s):
     year, month, day = s.split("-")
     day, tail = day[:2], day[2:]
-    hour, minute, second = tail[1:].split(":")
-    second = second[:2]
+    time = tail[1:].split(":")
+    if len(time) == 2:
+        hour, minute = time
+        second = "00"
+    else:
+        hour, minute, second = time
+        second = second[:2]
     year, month, day = int(year), int(month), int(day)
     hour, minute, second = int(hour), int(minute), int(second)
     return createDateClass(year, month, day, hour, minute, second)

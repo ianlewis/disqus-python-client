@@ -10,6 +10,8 @@ import simplejson
 import httplib
 import urllib
 
+from tlslite.utils.dateFuncs import parseDateClass
+
 _debug = False
 
 HOST = "disqus.com"
@@ -226,7 +228,8 @@ class DisqusService(object):
             forum=dct.get("forum"),
             slug=dct.get("slug"),
             title=dct.get("title"),
-            created_at=dct.get("created_at"),
+            created_at=parseDateClass(dct.get("created_at")),
+            #created_at=dct.get("created_at"),
             allow_comments=dct.get("allow_comments"),
             url=dct.get("url"),
             identifier=dct.get("identifier"),
@@ -239,7 +242,7 @@ class DisqusService(object):
             id=dct.get("id"),
             forum=dtt.get("forum"),
             thread=dct.get("thread"),
-            created_at=dct.get("created_at"),
+            created_at=parseDateClass(dct.get("created_at")),
             message=dct.get("message"),
             parent_post=dct.get("parent_post"),
             shown=dct.get("shown"),
