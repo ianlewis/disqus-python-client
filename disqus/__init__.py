@@ -4,8 +4,6 @@
 disqus-api-client
 
 A disqus api client for python.
-
-
 """
 
 import simplejson
@@ -30,8 +28,10 @@ REQUEST_METHODS = {
 }
 
 class DisqusService(object):
+    forum_key_cache = {}
+
     def login(self, api_key):
-        self.api_key = api_key
+        self.user_api_key = api_key
 
     def create_post(self, **kwargs):
         """
@@ -70,7 +70,12 @@ class DisqusService(object):
                 below for details on forum objects. 
         """
         resp = self._http_request("get_forum_list")
-        return [decode_forum(f) for f in resp["message"]]
+        return [self._decode_forum(f) for f in resp]
+
+    def get_user_api_key(self):
+        if not getattr(self, "user_api_key"):
+            raise Exception("Please login")
+        return self.user_api_key
 
     def get_forum_api_key(self, forum_id):
         """
@@ -79,10 +84,11 @@ class DisqusService(object):
 
         Result: A string which is the Forum Key for the given forum. 
         """
-        resp = self._http_request("get_forum_api_key", { "forum_id":forum_id })
-        return resp["message"]
+        if not self.forum_key_cache.get(str(forum_id)):
+            self.forum_key_cache[str(forum_id)] = self._http_request("get_forum_api_key", { "forum_id":forum_id })
+        return self.forum_key_cache[str(forum_id)]
 
-    def get_thread_list(self):
+    def get_thread_list(self, forum_id):
         """
         Key: Forum Key
         Arguments: None.
@@ -91,9 +97,12 @@ class DisqusService(object):
                 given forum. See "Object Formats" for details on thread
                 objects.
         """
-        pass
+        resp = self._http_request("get_thread_list", {
+            "forum_api_key": self.get_forum_api_key(forum_id),
+        })
+        return [self._decode_thread(t) for t in resp]
 
-    def get_num_posts(self, thread_ids):
+    def get_num_posts(self, forum_id, thread_ids):
         """
         Key: Forum Key
         Arguments: "thread_ids": a comma-separated list of thread IDs belonging
@@ -109,7 +118,7 @@ class DisqusService(object):
         """
         pass
 
-    def get_thread_by_url(self, url):
+    def get_thread_by_url(self, forum_id, url):
         """
         Key: Forum Key
         Arguments: "url", the URL to check for an associated thread.
@@ -125,7 +134,7 @@ class DisqusService(object):
         """
         pass
 
-    def get_thread_posts(self, thread_id):
+    def get_thread_posts(self, forum_id, thread_id):
         """
         Key: Forum Key
         Arguments: "thread_id": the ID of a thread belonging to the given 
@@ -136,7 +145,7 @@ class DisqusService(object):
         """
         pass
 
-    def thread_by_identifier(self, title, identifier):
+    def thread_by_identifier(self, forum_id, title, identifier):
         """
         Key: Forum Key
         Method: POST
@@ -161,7 +170,7 @@ class DisqusService(object):
         """
         pass
 
-    def update_thread(self, **kwargs):
+    def update_thread(self, forum_id, **kwargs):
         """
         Key: Forum Key
         Method: POST
@@ -178,11 +187,9 @@ class DisqusService(object):
         """
         pass
 
-    def _http_request(self, method_name, data={}, key_required=True):
-        if key_required:
-            if not getattr(self, "api_key"):
-                raise Exception("Please login")
-            data["user_api_key"] = self.api_key
+    def _http_request(self, method_name, data={}, user_key_required=True):
+        if user_key_required:
+            data["user_api_key"] = self.get_user_api_key()
 
         method = REQUEST_METHODS[method_name]
 
@@ -191,7 +198,76 @@ class DisqusService(object):
         con = httplib.HTTPConnection(HOST)
         con.request(method, url)
         
-        return simplejson.load(con.getresponse())
+        return self._decode_response(simplejson.load(con.getresponse()))
+    
+
+    def _decode_response(self, dct):
+        if dct.get("code") == "ok" and dct.get("succeeded"):
+            return dct.get("message")
+        else:
+            #TODO: raise Proper exception
+            raise Exception("%s: %s" % (dct.get("code"), dct.get("message")))
+
+    def _decode_forum(self, dct):
+        if _debug:
+            print "decode_forum: %r" % dct
+        return Forum(
+            service=self,
+            id=dct.get("id"),
+            shortname=dct.get("shortname"),
+            name=dct.get("name"),
+        )
+
+    def _decode_thread(self, dct):
+        if _debug:
+            print "decode_thread: %r" % dct
+        return Thread(
+            id=dct.get("id"),
+            forum=dct.get("forum"),
+            slug=dct.get("slug"),
+            title=dct.get("title"),
+            created_at=dct.get("created_at"),
+            allow_comments=dct.get("allow_comments"),
+            url=dct.get("url"),
+            identifier=dct.get("identifier"),
+        )
+
+    def _decode_post(self, dct):
+        if self._debug:
+            print "decode_post: %r" % dct
+        return Post(
+            id=dct.get("id"),
+            forum=dtt.get("forum"),
+            thread=dct.get("thread"),
+            created_at=dct.get("created_at"),
+            message=dct.get("message"),
+            parent_post=dct.get("parent_post"),
+            shown=dct.get("shown"),
+            is_anonymous=dct.get("is_anonymous"),
+            anonymous_author=dct.get("anonymous_author"),
+            author=dct.get("author"),
+        )
+
+    def decode_author(self, dct):
+        if self._debug:
+            print "decode_author: %r" % dct
+        return Author(
+            id=dct.get("id"),
+            username=dct.get("username"),
+            display_name=dct.get("display_name"),
+            url=dct.get("url"),
+            email_hash=dct.get("email_hash"),
+            has_avatar=dct.get("has_avatar"),
+        )
+
+    def decode_anonymous_author(self, dct):
+        if self._debug:
+            print "decode_anonymous_author: %r" % dct
+        return AnonymousAuthor(
+            name=dct["name"],
+            url=dct["url"],
+            email_hash=dct["email_hash"],
+        )
 
 class Forum(object):
     """
@@ -202,10 +278,14 @@ class Forum(object):
     name: a string for displaying the forum's full title,
           like "The Eyeball Kid's Blog". 
     """
-    def __init__(self, id, shortname, name):
+    def __init__(self, service, id, shortname, name):
+        self.service = service
         self.id = id
         self.shortname = shortname
         self.name = name
+
+    def get_thread_list(self):
+        return self.service.get_thread_list(self.id)
 
 class Thread(object):
     """
@@ -317,70 +397,3 @@ class AnonymousAuthor(object):
         self.name = name
         self.url = url
         self.email_hash = email_hash
-
-def decode_response(dct):
-    if dct.get("code") == "ok" and dct.get("succeeded"):
-        return dct.get("message")
-    else:
-        #TODO: raise Proper exception
-        raise Exception("%s: %s" % (dct.get("code"), dct.get("message")))
-
-def decode_forum(dct):
-    if _debug:
-        print "decode_forum: %r" % dct
-    return Forum(
-        id=dct.get("id"),
-        shortname=dct.get("shortname"),
-        name=dct.get("name"),
-    )
-
-def decode_thread(dct):
-    if _debug:
-        print "decode_thread: %r" % dct
-    return Thread(
-        id=dct.get("id"),
-        forum=dct.get("forum"),
-        slug=dct.get("slug"),
-        title=dct.get("title"),
-        created_at=dct.get("created_at"),
-        allow_comments=dct.get("allow_comments"),
-        url=dct.get("url"),
-        identifier=dct.get("identifier"),
-    )
-
-def decode_post(dct):
-    if _debug:
-        print "decode_post: %r" % dct
-    return Post(
-        id=dct.get("id"),
-        forum=dtt.get("forum"),
-        thread=dct.get("thread"),
-        created_at=dct.get("created_at"),
-        message=dct.get("message"),
-        parent_post=dct.get("parent_post"),
-        shown=dct.get("shown"),
-        is_anonymous=dct.get("is_anonymous"),
-        anonymous_author=dct.get("anonymous_author"),
-        author=dct.get("author"),
-    )
-
-def decode_author(dct):
-    if _debug:
-        print "decode_author: %r" % dct
-    return Author(
-        id=dct.get("id"),
-        username=dct.get("username"),
-        display_name=dct.get("display_name"),
-        url=dct.get("url"),
-        email_hash=dct.get("email_hash"),
-        has_avatar=dct.get("has_avatar"),
-    )
-
-def decode_anonymous_author(dct):
-    if _debug:
-        print "decode_anonymous_author: %r" % dct
-    return AnonymousAuthor(
-        name=dct["name"],
-        url=dct["url"],
-        email_hash=dct["email_hash"],
-    )
