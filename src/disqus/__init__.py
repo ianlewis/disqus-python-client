@@ -136,7 +136,7 @@ class DisqusService(object):
         """
         pass
 
-    def get_thread_posts(self, forum, thread_id):
+    def get_thread_posts(self, forum, thread):
         """
         Key: Forum Key
         Arguments: "thread_id": the ID of a thread belonging to the given 
@@ -145,7 +145,11 @@ class DisqusService(object):
         Result: A list of objects representing all posts belonging to the
                 given forum. See "Object Formats" for details on post objects. 
         """
-        pass
+        resp = self._http_request("get_thread_posts", {
+            "forum_api_key": forum.api_key,
+            "thread_id": thread.id
+        })
+        return [self._decode_post(forum, thread, post) for post in resp]
 
     def thread_by_identifier(self, forum, title, identifier):
         """
@@ -240,23 +244,28 @@ class DisqusService(object):
             identifier=dct.get("identifier"),
         )
 
-    def _decode_post(self, dct):
+    def _decode_post(self, forum, thread, dct):
         if self._debug:
             print "decode_post: %r" % dct
+        if "username" in dct:
+            return self._decode_author(forum, thread, dct)
+        if "name" in dct:
+            return self._decode_anonymous_author(forum, thread, dct)
+
         return Post(
             id=dct.get("id"),
-            forum=dtt.get("forum"),
-            thread=dct.get("thread"),
+            forum=forum,
+            thread=thread,
             created_at=parseDateClass(dct.get("created_at")),
             message=dct.get("message"),
-            parent_post=dct.get("parent_post"),
+            parent_post_id=dct.get("parent_post"),
             shown=dct.get("shown"),
             is_anonymous=dct.get("is_anonymous"),
             anonymous_author=dct.get("anonymous_author"),
             author=dct.get("author"),
         )
 
-    def decode_author(self, dct):
+    def _decode_author(self, dct):
         if self._debug:
             print "decode_author: %r" % dct
         return Author(
@@ -268,7 +277,7 @@ class DisqusService(object):
             has_avatar=dct.get("has_avatar"),
         )
 
-    def decode_anonymous_author(self, dct):
+    def _decode_anonymous_author(self, dct):
         if self._debug:
             print "decode_anonymous_author: %r" % dct
         return AnonymousAuthor(
@@ -342,6 +351,7 @@ class Thread(object):
         
         self._num_visible_posts = None
         self._num_total_posts = None
+        self._posts = None
     
     def _get_num_posts(self):
         data = self.service.get_num_posts(self.forum, [self])
@@ -353,14 +363,24 @@ class Thread(object):
             self._get_num_posts()
         return self._num_visible_posts
 
-    visible_posts = property(_get_visible_posts)
+    num_visible_posts = property(_get_visible_posts)
 
     def _get_total_posts(self):
         if self._num_total_posts is None:
             self._get_num_posts()
         return self._num_total_posts
 
-    total_posts = property(_get_total_posts)
+    num_total_posts = property(_get_total_posts)
+
+    def _get_posts(self):
+        if self._posts is None:
+            self._posts = self.service.get_thread_posts(self.forum, self)
+        return self._posts
+
+    posts = property(_get_posts)
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.id == other.id
 
 class Post(object):
     def __init__(self,
@@ -369,7 +389,7 @@ class Post(object):
                  thread,
                  created_at,
                  message,
-                 parent_post,
+                 parent_post_id,
                  shown,
                  is_anonymous=False,
                  anonymous_author=None,
@@ -393,15 +413,32 @@ class Post(object):
         self.thread = thread
         self.created_at = created_at
         self.message = message
-        self.parent_post = parent_post
+        self._parent_post_id = parent_post_id
+        self._parent_post = None
         self.shown = shown
         self.is_anonymous = is_anonymous
-        if self.is_anoymous:
+        if self.is_anonymous:
             self.anonymous_author = anonymous_author
             self.author = None
         else:
             self.author = author
             self.anonymous_author = None
+    
+    def _get_parent_post(self):
+        if self._parent_post_id and self._parent_post is None:
+            for post in self.thread.posts:
+                if self._parent_post_id == post.id:
+                    self._parent_post = post
+        return self._parent_post
+    
+    def _set_parent_post(self, post):
+        self._parent_post = post
+
+    parent_post = property(_get_parent_post, _set_parent_post)
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.id == other.id
+           
 
 class Author(object):
     def __init__(self,
@@ -426,6 +463,9 @@ class Author(object):
         self.email_hash = email_hash
         self.has_avatar = has_avatar
 
+    def __eq__(self, other):
+        return type(self) == type(other) and self.id == other.id
+
 class AnonymousAuthor(object):
     def __init__(self,
                  name,
@@ -439,3 +479,6 @@ class AnonymousAuthor(object):
         self.name = name
         self.url = url
         self.email_hash = email_hash
+
+    def __eq__(self, other):
+        return type(self) == type(other) and self.email_hash == other.email_hash
