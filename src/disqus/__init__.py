@@ -33,7 +33,14 @@ class DisqusService(object):
     def login(self, api_key):
         self.user_api_key = api_key
 
-    def create_post(self, **kwargs):
+    def create_post(self,
+                    thread_id,
+                    message,
+                    author_name,
+                    author_email,
+                    parent_post=None,
+                    created_at=None,
+                    author_url=None):
         """
         Key: Forum Key
         Method: POST
@@ -58,7 +65,22 @@ class DisqusService(object):
         Result: The post object just created. See "Object Formats" header below
                 for details on post objects. 
         """
-        pass
+        params = {
+            "thread_id": thread_id,
+            "message": message,
+            "author_name": author_name,
+            "author_email": author_email,
+        }
+        if parent_post:
+            params["parent_post"] = parent_post
+        if created_at:
+            if type(created_at) == type(datetime):
+                #TODO: convert datetime to string
+            params["created_at"] = created_at
+        if author_url:
+            param["author_url"] = author_url
+        resp = self._http_request("create_post", params)
+        return self._decode_post(resp)
 
     def get_forum_list(self):
         """
@@ -178,7 +200,15 @@ class DisqusService(object):
                                as a result of this method call. If created, it
                                will have the specified title. 
         """
-        pass
+        resp = self._http_request("thread_by_identifier", {
+            "forum_api_key": forum.api_key,
+            "title": title,
+            "identifier": identifier,
+        })
+        return {
+            "thread": self._decode_thread(forum, dct["thread"]),
+            "created": dct["created"],
+        }
 
     def update_thread(self, forum, **kwargs):
         """
