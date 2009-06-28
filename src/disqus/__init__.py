@@ -66,6 +66,7 @@ class DisqusService(object):
                 for details on post objects. 
         """
         params = {
+            "forum_api_key": forum.api_key,
             "thread_id": thread_id,
             "message": message,
             "author_name": author_name,
@@ -210,7 +211,13 @@ class DisqusService(object):
             "created": dct["created"],
         }
 
-    def update_thread(self, forum, **kwargs):
+    def update_thread(self, 
+                      forum,
+                      thread_id,
+                      title=None,
+                      slug=None,
+                      url=None,
+                      allow_comments=None):
         """
         Key: Forum Key
         Method: POST
@@ -225,7 +232,19 @@ class DisqusService(object):
         
         Result: An empty success message. 
         """
-        pass
+        params = {
+            "forum_api_key": forum.api_key,
+            "thread_id": thread_id,
+        }
+        if title:
+            params["title"] = title
+        if slug:
+            params["slug"] = slug
+        if url:
+            params["url"] = url
+        if allow_comments is not None:
+            params["allow_comments"] = 1 if allow_comments else 0 
+        resp = self._http_request("update_thread", params)
 
     def set_debug(self, debug):
         self._debug = debug
@@ -244,7 +263,6 @@ class DisqusService(object):
         
         return self._decode_response(simplejson.load(con.getresponse()))
     
-
     def _decode_response(self, dct):
         if dct.get("code") == "ok" and dct.get("succeeded"):
             return dct.get("message")
