@@ -134,7 +134,11 @@ class DisqusService(object):
                 this method is provided mainly for handling comments from
                 before your forum was using the API.
         """
-        pass
+        resp = self._http_request("get_thread_by_url", {
+            "forum_api_key": forum.api_key,
+            "url": url,
+        })
+        return self._decode_thread(resp)
 
     def get_thread_posts(self, forum, thread):
         """
@@ -221,6 +225,8 @@ class DisqusService(object):
     def _decode_forum(self, dct):
         if self._debug:
             print "decode_forum: %r" % dct
+        if not dct:
+            return None
         return Forum(
             service=self,
             id=dct.get("id"),
@@ -231,6 +237,8 @@ class DisqusService(object):
     def _decode_thread(self, forum, dct):
         if self._debug:
             print "decode_thread: %r" % dct
+        if not dct:
+            return None
         return Thread(
             service=self,
             id=dct.get("id"),
@@ -247,11 +255,12 @@ class DisqusService(object):
     def _decode_post(self, forum, thread, dct):
         if self._debug:
             print "decode_post: %r" % dct
+        if not dct:
+            return None
         if "username" in dct:
             return self._decode_author(forum, thread, dct)
         if "name" in dct:
             return self._decode_anonymous_author(forum, thread, dct)
-
         return Post(
             id=dct.get("id"),
             forum=forum,
@@ -268,6 +277,8 @@ class DisqusService(object):
     def _decode_author(self, dct):
         if self._debug:
             print "decode_author: %r" % dct
+        if not dct:
+            return None
         return Author(
             id=dct.get("id"),
             username=dct.get("username"),
@@ -280,6 +291,8 @@ class DisqusService(object):
     def _decode_anonymous_author(self, dct):
         if self._debug:
             print "decode_anonymous_author: %r" % dct
+        if not dct:
+            return None
         return AnonymousAuthor(
             name=dct["name"],
             url=dct["url"],
