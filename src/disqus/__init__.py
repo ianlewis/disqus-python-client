@@ -27,6 +27,18 @@ REQUEST_METHODS = {
     "update_thread": "POST",
 }
 
+def date_to_string(d):
+    return "%04d-%02d-%02dT%02d:%02d" % (
+        d.year,
+        d.month,
+        d.day,
+        d.hour,
+        d.minute,
+    )
+
+class APIError(Exception):
+    pass
+
 class DisqusService(object):
     _debug = False
 
@@ -76,8 +88,7 @@ class DisqusService(object):
             params["parent_post"] = parent_post
         if created_at:
             if type(created_at) == type(datetime):
-                #TODO: convert datetime to string
-            params["created_at"] = created_at
+                params["created_at"] = date_to_string(created_at)
         if author_url:
             param["author_url"] = author_url
         resp = self._http_request("create_post", params)
@@ -267,8 +278,7 @@ class DisqusService(object):
         if dct.get("code") == "ok" and dct.get("succeeded"):
             return dct.get("message")
         else:
-            #TODO: raise Proper exception
-            raise Exception("%s: %s" % (dct.get("code"), dct.get("message")))
+            raise APIError("%s: %s" % (dct.get("code"), dct.get("message")))
 
     def _decode_forum(self, dct):
         if self._debug:
