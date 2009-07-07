@@ -172,7 +172,7 @@ class DisqusService(object):
             "forum_api_key": forum.api_key,
             "url": url,
         })
-        return self._decode_thread(resp)
+        return self._decode_thread(forum, resp)
 
     def get_thread_posts(self, forum, thread):
         """
@@ -315,10 +315,6 @@ class DisqusService(object):
             print "decode_post: %r" % dct
         if not dct:
             return None
-        if "username" in dct:
-            return self._decode_author(forum, thread, dct)
-        if "name" in dct:
-            return self._decode_anonymous_author(forum, thread, dct)
         return Post(
             id=dct.get("id"),
             forum=forum,
@@ -328,8 +324,8 @@ class DisqusService(object):
             parent_post_id=dct.get("parent_post"),
             shown=dct.get("shown"),
             is_anonymous=dct.get("is_anonymous"),
-            anonymous_author=dct.get("anonymous_author"),
-            author=dct.get("author"),
+            anonymous_author=self._decode_anonymous_author(dct.get("anonymous_author")),
+            author=self._decode_author(dct.get("author")),
         )
 
     def _decode_author(self, dct):
@@ -384,6 +380,19 @@ class Forum(object):
         if self._threads is None:
             self._threads = self.service.get_thread_list(self)
         return self._threads
+
+    def get_thread_by_url(self, url):
+        if self._threads is not None:
+            for thread in self._threads:
+                if thread.url == url:
+                    return thread
+        return self.service.get_thread_by_url(self, url)
+
+    def __str__(self):
+        return ("%s object: '%s'" % (
+            self.__class__.__name__,
+            self.name,
+        )).encode('utf-8')
 
 class Thread(object):
     """
@@ -453,6 +462,12 @@ class Thread(object):
     def __eq__(self, other):
         return type(self) == type(other) and self.id == other.id
 
+    def __str__(self):
+        return ("%s object: '%s'" % (
+            self.__class__.__name__,
+            self.title,
+        )).encode('utf-8')
+
 class Post(object):
     def __init__(self,
                  id,
@@ -509,6 +524,12 @@ class Post(object):
 
     def __eq__(self, other):
         return type(self) == type(other) and self.id == other.id
+
+    def __str__(self):
+        return ("%s object: '%s'" % (
+            self.__class__.__name__,
+            self.message[:15]+'...' if len(self.message) > 15 else self.message,
+        )).encode('utf-8')
            
 
 class Author(object):
@@ -537,6 +558,12 @@ class Author(object):
     def __eq__(self, other):
         return type(self) == type(other) and self.id == other.id
 
+    def __str__(self):
+        return ("%s object: '%s'" % (
+            self.__class__.__name__,
+            self.display_name,
+        )).encode('utf-8')
+
 class AnonymousAuthor(object):
     def __init__(self,
                  name,
@@ -553,3 +580,9 @@ class AnonymousAuthor(object):
 
     def __eq__(self, other):
         return type(self) == type(other) and self.email_hash == other.email_hash
+
+    def __str__(self):
+        return ("%s object: '%s'" % (
+            self.__class__.__name__,
+            self.name,
+        )).encode('utf-8')
