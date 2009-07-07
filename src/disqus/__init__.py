@@ -46,7 +46,8 @@ class DisqusService(object):
         self.user_api_key = api_key
 
     def create_post(self,
-                    thread_id,
+                    forum,
+                    thread,
                     message,
                     author_name,
                     author_email,
@@ -79,7 +80,7 @@ class DisqusService(object):
         """
         params = {
             "forum_api_key": forum.api_key,
-            "thread_id": thread_id,
+            "thread_id": thread.id,
             "message": message,
             "author_name": author_name,
             "author_email": author_email,
@@ -90,9 +91,9 @@ class DisqusService(object):
             if type(created_at) == type(datetime):
                 params["created_at"] = date_to_string(created_at)
         if author_url:
-            param["author_url"] = author_url
+            params["author_url"] = author_url
         resp = self._http_request("create_post", params)
-        return self._decode_post(resp)
+        return self._decode_post(forum, thread, resp)
 
     def get_forum_list(self):
         """
@@ -266,13 +267,42 @@ class DisqusService(object):
 
         method = REQUEST_METHODS[method_name]
 
-        url = (BASE_URL +"?%s") % (method_name, urllib.urlencode(data))
-        if self._debug:
-            print url
         con = httplib.HTTPConnection(HOST)
-        con.request(method, url)
-        
-        return self._decode_response(simplejson.load(con.getresponse()))
+
+        if method == 'GET':
+            url = (BASE_URL +"?%s") % (method_name, urllib.urlencode(data))
+
+            if self._debug:
+                print method, url
+            
+            con.request(method, url)
+        else:
+            
+            url = BASE_URL % method_name
+
+            headers = {
+                "Content-type": "application/x-www-form-urlencoded",
+                "Accept": "application/json; text/plain",
+            }
+            params = urllib.urlencode(data)
+
+            if self._debug:
+                print method, url
+                print params
+
+            con.request(method, url, params, headers)
+                
+        resp = con.getresponse()
+        if resp.status > 200:
+            raise APIError("%s: %s" % (resp.status, resp.reason))
+       
+        if self._debug:
+            resp_data = resp.read()
+            print resp.status
+            print resp_data
+            return self._decode_response(simplejson.loads(resp_data))
+        else:
+            return self._decode_response(simplejson.load(resp))
     
     def _decode_response(self, dct):
         if dct.get("code") == "ok" and dct.get("succeeded"):
@@ -458,6 +488,33 @@ class Thread(object):
         return self._posts
 
     posts = property(_get_posts)
+
+    def create_post(self,
+                    message,
+                    author_name,
+                    author_email,
+                    parent_post=None,
+                    created_at=None,
+                    author_url=None):
+        
+        if type(parent_post) == Post:
+            parent_post = parent_post.id
+
+        post = self.service.create_post(
+            self.forum,
+            self,
+            message,
+            author_name,
+            author_email,
+            parent_post,
+            created_at,
+            author_url,
+        )
+        # Append the new post to the posts
+        # list if we've gotten it.
+        if self._posts is not None:
+            self._posts.append(post)
+        return post
 
     def __eq__(self, other):
         return type(self) == type(other) and self.id == other.id
