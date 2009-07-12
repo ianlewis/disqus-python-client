@@ -10,7 +10,7 @@ import simplejson
 import httplib
 import urllib
 
-from tlslite.utils.dateFuncs import parseDateClass
+from disqus.tlslite.utils.dateFuncs import parseDateClass
 
 HOST = "disqus.com"
 BASE_URL = "/api/%s/"
