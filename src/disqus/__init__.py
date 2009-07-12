@@ -225,7 +225,7 @@ class DisqusService(object):
 
     def update_thread(self, 
                       forum,
-                      thread_id,
+                      thread,
                       title=None,
                       slug=None,
                       url=None,
@@ -246,7 +246,7 @@ class DisqusService(object):
         """
         params = {
             "forum_api_key": forum.api_key,
-            "thread_id": thread_id,
+            "thread_id": thread.id,
         }
         if title:
             params["title"] = title
@@ -269,6 +269,11 @@ class DisqusService(object):
 
         con = httplib.HTTPConnection(HOST)
 
+        # Make sure data is in encoded string format for urllib
+        for d in data:
+            if type(data[d]) == unicode:
+                data[d] = data[d].encode("utf8")
+
         if method == 'GET':
             url = (BASE_URL +"?%s") % (method_name, urllib.urlencode(data))
 
@@ -284,6 +289,7 @@ class DisqusService(object):
                 "Content-type": "application/x-www-form-urlencoded",
                 "Accept": "application/json; text/plain",
             }
+
             params = urllib.urlencode(data)
 
             if self._debug:
@@ -515,6 +521,16 @@ class Thread(object):
         if self._posts is not None:
             self._posts.append(post)
         return post
+
+    def update(self):
+        self.service.update_thread(
+            self.forum,
+            self,
+            self.title,
+            self.slug,
+            self.url,
+            self.allow_comments,
+        )
 
     def __eq__(self, other):
         return type(self) == type(other) and self.id == other.id
