@@ -1,0 +1,3 @@
+disqus-api-client is a client for the Disqus (www.disqus.com)
+comment forum service. It implements the entire Disqus
+API in full.
