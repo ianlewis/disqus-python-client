@@ -1,18 +1,7 @@
 #!/usr/bin/env python
 #:coding=utf-8:
 
-from ez_setup import use_setuptools
 import sys
-if 'cygwin' in sys.platform.lower():
-   min_version='0.6c6'
-else:
-   min_version='0.6a9'
-try:
-    use_setuptools(min_version=min_version)
-except TypeError:
-    # If a non-local ez_setup is already imported, it won't be able to
-    # use the min_version kwarg and will bail with TypeError
-    use_setuptools()
 
 if sys.version < '2.4':
     sys.exit('Error: Python-2.4 or newer is required. Current version:\n %s' % sys.version)
@@ -21,9 +10,7 @@ from setuptools import setup, find_packages
 
 VERSION = "0.1"
 DESCRIPTION = "Disqus API Client"
-LONG_DESCRIPTION = """
-disqus-api-client is a full featured 
-"""
+LONG_DESCRIPTION = "A Disqus (http://www.disqus.com/) API client written in python."
 
 CLASSIFIERS = filter(None, map(str.strip,
 """                 
@@ -42,7 +29,7 @@ setup(name='disqus-api-client',
       url='http://code.google.com/p/disqus-python-client/',
       license="MIT License",
       platforms=["any"],
-      packages=find_packages(exclude=['ez_setup']),
+      packages=find_packages(),
       #test_suite="disqus.tests",
       zip_safe=True
      )
