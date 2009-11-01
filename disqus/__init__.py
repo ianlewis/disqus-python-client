@@ -88,8 +88,7 @@ class DisqusService(object):
         if parent_post:
             params["parent_post"] = parent_post
         if created_at:
-            if type(created_at) == type(datetime):
-                params["created_at"] = date_to_string(created_at)
+            params["created_at"] = date_to_string(created_at)
         if author_url:
             params["author_url"] = author_url
         resp = self._http_request("create_post", params)
