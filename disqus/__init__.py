@@ -23,7 +23,7 @@ REQUEST_METHODS = {
     "get_num_posts": "GET",
     "get_thread_by_url": "GET",
     "get_thread_posts": "GET",
-    "thread_by_identiier": "POST",
+    "thread_by_identifier": "POST",
     "update_thread": "POST",
 }
 
@@ -219,8 +219,8 @@ class DisqusService(object):
             "identifier": identifier,
         })
         return {
-            "thread": self._decode_thread(forum, dct["thread"]),
-            "created": dct["created"],
+            "thread": self._decode_thread(forum, resp["thread"]),
+            "created": resp["created"],
         }
 
     def update_thread(self, 
