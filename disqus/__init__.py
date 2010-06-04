@@ -42,6 +42,9 @@ class APIError(Exception):
 class DisqusService(object):
     _debug = False
 
+    def __init__(self, api_version="1.0"):
+        self.api_version = api_version
+
     def login(self, api_key):
         self.user_api_key = api_key
 
@@ -266,6 +269,8 @@ class DisqusService(object):
     def _http_request(self, method_name, data={}, user_key_required=True):
         if user_key_required:
             data["user_api_key"] = self.get_user_api_key()
+
+        data["api_version"] = self.api_version
 
         method = REQUEST_METHODS[method_name]
 
