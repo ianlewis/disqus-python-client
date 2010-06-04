@@ -17,6 +17,7 @@ BASE_URL = "/api/%s/"
 
 REQUEST_METHODS = {
     "create_post": "POST",
+    "moderate_post": "POST",
     "get_forum_list": "GET",
     "get_forum_api_key": "GET",
     "get_thread_list": "GET",
@@ -98,6 +99,26 @@ class DisqusService(object):
         if ip_address:
             params["ip_address"] = ip_address
         resp = self._http_request("create_post", params)
+        return self._decode_post(forum, thread, resp)
+
+    def moderate_post(self, post_id, action):
+        """
+        Introduced in API 1.1
+        
+        Key: User Key
+        Arguments: "post_id"
+                   "action": name of action to be performed ("spam", "approve",
+                             or "kill").
+        
+        Result: Moderates post and returns modified version.
+        """
+        params = {
+            "post_id": post_id,
+            "action": action,
+        }
+        resp = self._http_request("moderate_post", params)
+        forum = self._decode_forum(resp["forum"])
+        thread = self._decode_thread(forum, resp["thread"])
         return self._decode_post(forum, thread, resp)
 
     def get_forum_list(self):
