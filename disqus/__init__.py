@@ -53,7 +53,8 @@ class DisqusService(object):
                     author_email,
                     parent_post=None,
                     created_at=None,
-                    author_url=None):
+                    author_url=None,
+                    ip_address=None):
         """
         Key: Forum Key
         Method: POST
@@ -68,8 +69,8 @@ class DisqusService(object):
                 "created_at": the UTC date this post was created in the format
                               %Y-%m-%dT%H:%M (the current time will be used by
                               default)
-                "author_url": the author's homepage; and "ip_address", their 
-                              IP address.
+                "author_url": the author's homepage
+                "ip_address": the author's IP address
         
         Action: Creates a new post on the thread. Does not check against spam
                 filters or ban list. This is intended to allow automated
@@ -91,6 +92,8 @@ class DisqusService(object):
             params["created_at"] = date_to_string(created_at)
         if author_url:
             params["author_url"] = author_url
+        if ip_address:
+            params["ip_address"] = ip_address
         resp = self._http_request("create_post", params)
         return self._decode_post(forum, thread, resp)
 
