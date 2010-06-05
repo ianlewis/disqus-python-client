@@ -201,19 +201,43 @@ class DisqusService(object):
         })
         return self._decode_thread(forum, resp)
 
-    def get_thread_posts(self, forum, thread):
+    def get_thread_posts(self,
+                         forum,
+                         thread,
+                         limit=None,
+                         start=None,
+                         filter=None,
+                         exclude=None):
         """
         Key: Forum Key
-        Arguments: "thread_id": the ID of a thread belonging to the given 
-                                forum.
-
+        Arguments:
+            Required:
+                "thread_id": the ID of a thread belonging to the given forum.
+            Optional (introduced in API 1.1):
+                "limit": number of entries to be included in the response
+                         (default is 25)
+                "start": starting point for the query (default is 0)
+                "filter": type of entries to be returned ("new", "spam", or
+                          "killed")
+                "exclude": type of entries to be excluded from the response
+                           ("new", "spam", or "killed").
+        
         Result: A list of objects representing all posts belonging to the
                 given forum. See "Object Formats" for details on post objects. 
         """
-        resp = self._http_request("get_thread_posts", {
+        params = {
             "forum_api_key": forum.api_key,
             "thread_id": thread.id
-        })
+        }
+        if limit:
+            params["limit"] = limit
+        if start:
+            params["start"] = start
+        if filter:
+            params["filter"] = filter
+        if exclude:
+            params["exclude"] = exclude
+        resp = self._http_request("get_thread_posts", params)
         return [self._decode_post(forum, thread, post) for post in resp]
 
     def thread_by_identifier(self, forum, title, identifier):
