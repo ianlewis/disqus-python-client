@@ -414,6 +414,7 @@ class DisqusService(object):
             is_anonymous=dct.get("is_anonymous"),
             anonymous_author=self._decode_anonymous_author(dct.get("anonymous_author")),
             author=self._decode_author(dct.get("author")),
+            has_been_moderated=dct.get("has_been_moderated"),
         )
 
     def _decode_author(self, dct):
@@ -604,7 +605,8 @@ class Post(object):
                  shown,
                  is_anonymous=False,
                  anonymous_author=None,
-                 author=None):
+                 author=None,
+                 has_been_moderated=False):
         """
         id: a unique alphanumeric string identifying this Post object.
         forum: the id for the forum this post belongs to.
@@ -634,6 +636,7 @@ class Post(object):
         else:
             self.author = author
             self.anonymous_author = None
+        self.has_been_moderated = has_been_moderated
     
     def _get_parent_post(self):
         if self._parent_post_id and self._parent_post is None:
