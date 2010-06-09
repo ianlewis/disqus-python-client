@@ -229,9 +229,9 @@ class DisqusService(object):
             "forum_api_key": forum.api_key,
             "thread_id": thread.id
         }
-        if limit:
+        if limit is not None:
             params["limit"] = limit
-        if start:
+        if start is not None:
             params["start"] = start
         if filter:
             params["filter"] = filter
