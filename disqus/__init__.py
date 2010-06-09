@@ -147,18 +147,35 @@ class DisqusService(object):
         """
         return self._http_request("get_forum_api_key", { "forum_id":forum.id })
 
-    def get_thread_list(self, forum):
+    def get_thread_list(self,
+                        forum,
+                        limit=None,
+                        start=None,
+                        category_id=None):
         """
         Key: Forum Key
-        Arguments: None.
+        Arguments:
+            Optional:
+                "limit": number of entries to be included in the response
+                         (default is 25)
+                "start": starting point for the query (default is 0)
+                "category_id": filter entries by their category.
         
         Result: A list of objects representing all threads belonging to the
                 given forum. See "Object Formats" for details on thread
                 objects.
         """
-        resp = self._http_request("get_thread_list", {
+        params = {
             "forum_api_key": forum.api_key,
-        })
+            "forum_id": forum.id,
+        }
+        if limit is not None:
+            params["limit"] = limit
+        if start is not None:
+            params["start"] = start
+        if category_id:
+            params["category_id"] = category_id
+        resp = self._http_request("get_thread_list", params)
         return [self._decode_thread(forum, t) for t in resp]
 
     def get_num_posts(self, forum, threads):
