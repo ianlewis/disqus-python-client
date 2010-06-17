@@ -257,34 +257,49 @@ class DisqusService(object):
         resp = self._http_request("get_thread_posts", params)
         return [self._decode_post(forum, thread, post) for post in resp]
 
-    def thread_by_identifier(self, forum, title, identifier):
+    def thread_by_identifier(self,
+                             forum,
+                             title,
+                             identifier,
+                             category_id=None,
+                             create_on_fail=True):
         """
         Key: Forum Key
         Method: POST
-        Arguments: "title": the title of the thread to possibly be created
-                   "identifier": a string of your choosing (see Action).
-
-        Action: Create or retrieve a thread by an arbitrary identifying string
-                of your choice. For example, you could use your local
-                database's ID for the thread. This method allows you to
-                decouple thread identifiers from the URLs on which they might
-                be appear. (Disqus would normally use a thread's URL to
-                identify it, which is problematic when URLs do not uniquely 
-                identify a resource.) If no thread yet exists for the given
-                identifier (paired with the forum), one will be created.
-
+        Arguments:
+            Required:
+                "title": if thread does not exist, the method will create it
+                         with the specified title (can be an empty string if
+                         you are sure that the thread exists)
+                "identifier": unique value (per forum) for a thread that is
+                              used to get data even if permalink is changed.
+            Optional (introduced in API 1.1):
+                "category_id": if thread does not exist, the method will create
+                               it in the specified category
+                "create_on_fail": when False, a new thread will not be created
+                                  even if a matching thread is not found.
+        
+        Action: This method tries to find a thread by its identifier and title.
+                If there is no such thread and create_on_fail is undefined or
+                set to 1, the method creates it. If create_on_fail is set to 0,
+                this method will return an empty (but valid) response.
+        
         Result: An object with two keys:
                     "thread": which is the thread object corresponding to the
                               identifier
                     "created": which indicates whether the thread was created
                                as a result of this method call. If created, it
-                               will have the specified title. 
+                               will have the specified title.
         """
-        resp = self._http_request("thread_by_identifier", {
+        params = {
             "forum_api_key": forum.api_key,
             "title": title,
             "identifier": identifier,
-        })
+            "create_on_fail": 1 if create_on_fail else 0,
+        }
+        if category_id:
+            params["category_id"] = category_id
+        resp = self._http_request("thread_by_identifier", params)
         return {
             "thread": self._decode_thread(forum, resp["thread"]),
             "created": resp["created"],
