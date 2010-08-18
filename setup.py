@@ -8,7 +8,7 @@ if sys.version < '2.4':
 
 from setuptools import setup, find_packages
 
-VERSION = "0.1"
+VERSION = "1.1"
 DESCRIPTION = "Disqus API Client"
 LONG_DESCRIPTION = "A Disqus (http://www.disqus.com/) API client written in python."
 
