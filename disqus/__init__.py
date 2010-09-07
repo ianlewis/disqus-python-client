@@ -6,7 +6,18 @@ disqus-api-client
 A disqus api client for python.
 """
 
-import simplejson
+try:
+    import json
+except ImportError:
+    import simplejson as json
+else:
+    try:
+        # There is a "json" package around that is not Python's "json", so
+        # check for something that exists only in the official version.
+        json.JSONDecoder
+    except AttributeError:
+        import simplejson as json
+
 import httplib
 import urllib
 
@@ -390,9 +401,9 @@ class DisqusService(object):
             resp_data = resp.read()
             print resp.status
             print resp_data
-            return self._decode_response(simplejson.loads(resp_data))
+            return self._decode_response(json.loads(resp_data))
         else:
-            return self._decode_response(simplejson.load(resp))
+            return self._decode_response(json.load(resp))
     
     def _decode_response(self, dct):
         if dct.get("code") == "ok" and dct.get("succeeded"):
