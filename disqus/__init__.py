@@ -700,11 +700,12 @@ class Post(object):
         return type(self) == type(other) and self.id == other.id
 
     def __str__(self):
+        text = ("%s\n" % self.message.strip()).splitlines()[0]
         return ("%s object: '%s'" % (
             self.__class__.__name__,
-            self.message[:15]+'...' if len(self.message) > 15 else self.message,
+            "%s..." % text[:15] if len(text) > 15 else text,
         )).encode('utf-8')
-           
+
 
 class Author(object):
     def __init__(self,
